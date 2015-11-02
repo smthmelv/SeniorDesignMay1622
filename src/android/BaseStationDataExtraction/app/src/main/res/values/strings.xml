@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">Base Station Data Extraction</string>
+    <string name="action_settings">Settings</string>
+</resources>
