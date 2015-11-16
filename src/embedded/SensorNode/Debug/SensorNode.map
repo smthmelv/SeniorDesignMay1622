@@ -1,0 +1,45 @@
+******************************************************************************
+                  TI ARM Linker Unix v5.2.5                    
+******************************************************************************
+>> Linked Mon Nov 16 15:52:23 2015
+
+OUTPUT FILE NAME:   <SensorNode.out>
+ENTRY POINT SYMBOL: 0
+
+
+MEMORY CONFIGURATION
+
+         name            origin    length      used     unused   attr    fill
+----------------------  --------  ---------  --------  --------  ----  --------
+  RAM                   00000020   ffffffe0  00000000  ffffffe0  RWIX
+
+
+SECTION ALLOCATION MAP
+
+ output                                  attributes/
+section   page    origin      length       input sections
+--------  ----  ----------  ----------   ----------------
+.init_array 
+*          0    00000020    00000000     UNINITIALIZED
+
+
+GLOBAL SYMBOLS: SORTED ALPHABETICALLY BY Name 
+
+address   name      
+-------   ----      
+ffffffff  __binit__ 
+ffffffff  __c_args__
+UNDEFED   _c_int00  
+ffffffff  binit     
+
+
+GLOBAL SYMBOLS: SORTED BY Symbol Address 
+
+address   name      
+-------   ----      
+ffffffff  __binit__ 
+ffffffff  __c_args__
+ffffffff  binit     
+UNDEFED   _c_int00  
+
+[4 symbols]
