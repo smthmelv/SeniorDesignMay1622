@@ -1,5 +1,6 @@
 package com.example.androideka.basestationdataextraction;
 
+import android.Manifest;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothSocket;
@@ -8,8 +9,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.os.Bundle;
-import android.support.design.widget.FloatingActionButton;
-import android.support.design.widget.Snackbar;
+import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
 import android.util.Log;
@@ -18,14 +18,11 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
-import android.widget.ListAdapter;
+import android.widget.Button;
 import android.widget.ListView;
 import android.widget.Toast;
 
 import java.io.IOException;
-import java.lang.reflect.Array;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.UUID;
@@ -64,14 +61,8 @@ public class MainActivity extends AppCompatActivity {
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
 
-        FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.fab);
-        fab.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                Snackbar.make(view, "Replace with your own action", Snackbar.LENGTH_LONG)
-                        .setAction("Action", null).show();
-            }
-        });
+        ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.BLUETOOTH,
+                Manifest.permission.BLUETOOTH_PRIVILEGED, Manifest.permission.BLUETOOTH_ADMIN}, 43);
 
         ListView list = (ListView) findViewById(R.id.deviceList);
         adapter  = new ArrayAdapter<>(this, R.layout.device, deviceNames);
@@ -81,8 +72,8 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
                 final BluetoothDevice device =
-                        devices.get((String)parent.getItemAtPosition(position));
-                if(device.getName() != null && device.getName().equals("")) // Use name of board
+                        devices.get(parent.getItemAtPosition(position));
+                if (device.getName() != null && device.getName().equals("")) // Use name of board
                 {
                     try {
                         bluetooth.cancelDiscovery();
@@ -106,6 +97,24 @@ public class MainActivity extends AppCompatActivity {
         }
 
         registerReceiver(receiver, filter);
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions,
+                                           int[] grantResults)
+    {
+        switch(requestCode)
+        {
+            case 40:
+            case 41:
+            case 42:
+            case 43:
+                Button button = (Button) findViewById(R.id.findDevices);
+                button.setVisibility(View.VISIBLE);
+                break;
+            default:
+                break;
+        }
     }
 
     @Override
@@ -145,6 +154,7 @@ public class MainActivity extends AppCompatActivity {
 
     public void connect(View view)
     {
+        bluetooth.cancelDiscovery();
         if(bluetooth.startDiscovery())
         {
             Log.d("BLUETOOTH", "Scanning for devices...");

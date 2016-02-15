@@ -14,7 +14,8 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="@string/search_devices"
-        android:onClick="connect">
+        android:onClick="connect"
+        android:visibility="invisible">
     </Button>
     <ListView
         android:id="@+id/deviceList"
