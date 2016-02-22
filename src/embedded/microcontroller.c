@@ -8,5 +8,5 @@
 
 void mcu_setup()
 {
-
+    printf("Hello World!\n");
 }
