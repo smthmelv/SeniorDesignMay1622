@@ -8,8 +8,10 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.support.v4.app.ActivityCompat;
+import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
 import android.util.Log;
@@ -29,7 +31,7 @@ import java.util.UUID;
 
 public class MainActivity extends AppCompatActivity {
 
-    private BluetoothAdapter bluetooth;
+    private BluetoothAdapter bluetooth = BluetoothAdapter.getDefaultAdapter();
 
     private ArrayAdapter<String> adapter;
     private ArrayList<String> deviceNames = new ArrayList<>();
@@ -61,8 +63,26 @@ public class MainActivity extends AppCompatActivity {
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
 
-        ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.BLUETOOTH,
-                Manifest.permission.BLUETOOTH_PRIVILEGED, Manifest.permission.BLUETOOTH_ADMIN}, 43);
+        if ((ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH)
+                != PackageManager.PERMISSION_GRANTED)
+                //|| (ContextCompat.checkSelfPermission(this,
+                //Manifest.permission.BLUETOOTH_PRIVILEGED) != PackageManager.PERMISSION_GRANTED)
+                || (ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_ADMIN)
+                != PackageManager.PERMISSION_GRANTED))
+        {
+            ActivityCompat.requestPermissions(this, new String[]{
+                    Manifest.permission.BLUETOOTH,
+                    //Manifest.permission.BLUETOOTH_PRIVILEGED,
+                    Manifest.permission.BLUETOOTH_ADMIN},
+                    43);
+        }
+        else
+        {
+            Log.d("LOG", "Bluetooth permissions enabled");
+            Button button = (Button) findViewById(R.id.findDevices);
+            button.setVisibility(View.VISIBLE);
+        }
+
 
         ListView list = (ListView) findViewById(R.id.deviceList);
         adapter  = new ArrayAdapter<>(this, R.layout.device, deviceNames);
@@ -89,7 +109,7 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        bluetooth = BluetoothAdapter.getDefaultAdapter();
+        //bluetooth = BluetoothAdapter.getDefaultAdapter();
         if(bluetooth != null && !bluetooth.isEnabled())
         {
             Intent enable = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
@@ -154,7 +174,10 @@ public class MainActivity extends AppCompatActivity {
 
     public void connect(View view)
     {
-        bluetooth.cancelDiscovery();
+        if(bluetooth.isDiscovering())
+        {
+            bluetooth.cancelDiscovery();
+        }
         if(bluetooth.startDiscovery())
         {
             Log.d("BLUETOOTH", "Scanning for devices...");

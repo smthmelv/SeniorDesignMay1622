@@ -85,11 +85,12 @@ uint32_t Rom2RomPatchTable[] = {
    0x10018a35  // [60] => offset 0xF0
 };
 
-uint32_t commonROMScratchArea[ 53 ] @0x20004F2C;
+uint32_t commonROMScratchArea[ 53 ] x20004F2C;
 
 extern void StandaloneRomCryptoInit( void )
 {
-   for ( int i = 0 ; i < ( sizeof( commonROMScratchArea ) / sizeof( uint32_t )) ; i++ ) {
+   int i = 0;
+   for ( i = 0 ; i < ( sizeof( commonROMScratchArea ) / sizeof( uint32_t )) ; i++ ) {
       commonROMScratchArea[ i ] = 0;
    }
    commonROMScratchArea[ 3 ] = ((uint32_t)HelpFuncTable);

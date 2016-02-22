@@ -43,7 +43,7 @@
 //
 //*****************************************************************************
 #if !(defined(__GNUC__))
-#error "startup_gcc.c: Unsupported compiler!"
+//#error "startup_gcc.c: Unsupported compiler!"
 #endif
 
 #include "../../CC1310Ware/inc/hw_types.h"
