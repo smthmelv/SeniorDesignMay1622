@@ -1,6 +1,7 @@
 package com.example.androideka.basestationdataextraction;
 
 import android.Manifest;
+import android.annotation.TargetApi;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothSocket;
@@ -9,6 +10,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.PackageManager;
+import android.os.Build;
 import android.os.Bundle;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
@@ -24,7 +26,13 @@ import android.widget.Button;
 import android.widget.ListView;
 import android.widget.Toast;
 
+import java.io.BufferedOutputStream;
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.UUID;
@@ -39,6 +47,44 @@ public class MainActivity extends AppCompatActivity {
 
     IntentFilter filter = new IntentFilter(BluetoothDevice.ACTION_FOUND);
 
+    private final String TAG = "DEBUG";
+    IntentFilter pairFilter = new IntentFilter(BluetoothDevice.ACTION_PAIRING_REQUEST);
+
+    private final BroadcastReceiver mPairingRequestReceiver = new BroadcastReceiver() {
+        @TargetApi(Build.VERSION_CODES.KITKAT)
+        public void onReceive(Context context, Intent intent) {
+            String action = intent.getAction();
+            if (action.equals(BluetoothDevice.ACTION_PAIRING_REQUEST)) {
+                try {
+                    BluetoothDevice device = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
+                    int pin=intent.getIntExtra("android.bluetooth.device.extra.PAIRING_KEY", 1234);
+                    //the pin in case you need to accept for an specific pin
+                    Log.d(TAG, "Start Auto Pairing. PIN = " + intent.getIntExtra("android.bluetooth.device.extra.PAIRING_KEY",1234));
+                    byte[] pinBytes;
+                    pinBytes = (""+pin).getBytes("UTF-8");
+                    device.setPin(pinBytes);
+                    //setPairing confirmation if neeeded
+                    device.setPairingConfirmation(true);
+                    pairDevice(device);
+                } catch (Exception e) {
+                    Log.e(TAG, "Error occurs when trying to auto pair");
+                    e.printStackTrace();
+                }
+            }
+        }
+    };
+
+    @TargetApi(Build.VERSION_CODES.KITKAT)
+    private void pairDevice(BluetoothDevice device) {
+        try {
+            Log.d(TAG, "Start Pairing... with: " + device.getName());
+            device.createBond();
+            Log.d(TAG, "Pairing finished.");
+        } catch (Exception e) {
+            Log.e(TAG, e.getMessage());
+        }
+    }
+
     private final BroadcastReceiver receiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
@@ -51,7 +97,8 @@ public class MainActivity extends AppCompatActivity {
                 deviceNames.add(device.getName());
                 devices.put(device.getName(), device);
                 adapter.notifyDataSetChanged();
-                //Toast.makeText(context, device.getName(), Toast.LENGTH_LONG).show();
+                Button search = (Button) findViewById(R.id.findDevices);
+                search.setVisibility(View.GONE);
             }
         }
     };
@@ -93,23 +140,26 @@ public class MainActivity extends AppCompatActivity {
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
                 final BluetoothDevice device =
                         devices.get(parent.getItemAtPosition(position));
-                if (device.getName() != null && device.getName().equals("")) // Use name of board
+                if (device.getName() != null && device.getName().equals("Nexus 4")) // Use name of board
                 {
+                    Log.d(TAG, "Proper station");
                     try {
                         bluetooth.cancelDiscovery();
-                        long msb = 16;
-                        long lsb = 22;
-                        UUID uuid = new UUID(msb, lsb);
-                        BluetoothSocket socket = device.createRfcommSocketToServiceRecord(uuid);
+                        BluetoothSocket socket = device.createInsecureRfcommSocketToServiceRecord(
+                                UUID.fromString("f3c99dbc-e8a5-485a-8e06-e8c56b6df710"));
+                        //Method m = device.getClass().getMethod("createInsecureRfcommSocket", new Class[]{int.class});
+                        //BluetoothSocket tmp = (BluetoothSocket) m.invoke(device, 1);
                         socket.connect();
+                        Log.d(TAG, "Socket connected, reading data.");
+                        readData(socket);
                     } catch (IOException e) {
+                        Log.d(TAG, "SHIT happened");
                         e.printStackTrace();
                     }
                 }
             }
         });
 
-        //bluetooth = BluetoothAdapter.getDefaultAdapter();
         if(bluetooth != null && !bluetooth.isEnabled())
         {
             Intent enable = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
@@ -117,6 +167,7 @@ public class MainActivity extends AppCompatActivity {
         }
 
         registerReceiver(receiver, filter);
+        registerReceiver(mPairingRequestReceiver, pairFilter);
     }
 
     @Override
@@ -174,8 +225,7 @@ public class MainActivity extends AppCompatActivity {
 
     public void connect(View view)
     {
-        if(bluetooth.isDiscovering())
-        {
+        if(bluetooth.isDiscovering()) {
             bluetooth.cancelDiscovery();
         }
         if(bluetooth.startDiscovery())
@@ -184,11 +234,36 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    public void readData(BluetoothSocket sock)
+    {
+        try {
+            InputStream in = sock.getInputStream();
+            byte[] buffer = new byte[65536];
+            int num = in.read(buffer);
+            Log.d(TAG, num + " bytes received.");
+            byte[] fileBuffer = new byte[num];
+            for( int i = 0; i < num; i++ )
+            {
+                fileBuffer[i] = buffer[i];
+            }
+            File file = new File(getApplicationContext().getFilesDir(), "dummy");
+            BufferedOutputStream bufferedOutputStream = new BufferedOutputStream(
+                    new FileOutputStream(file));
+            Log.d(TAG, "Saving file to internal storage.");
+            bufferedOutputStream.write(fileBuffer);
+            bufferedOutputStream.flush();
+            bufferedOutputStream.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
     @Override
     public void onResume()
     {
         super.onResume();
         registerReceiver(receiver, filter);
+        registerReceiver(mPairingRequestReceiver, pairFilter);
     }
 
     @Override
@@ -196,5 +271,6 @@ public class MainActivity extends AppCompatActivity {
     {
         super.onPause();
         unregisterReceiver(receiver);
+        unregisterReceiver(mPairingRequestReceiver);
     }
 }
