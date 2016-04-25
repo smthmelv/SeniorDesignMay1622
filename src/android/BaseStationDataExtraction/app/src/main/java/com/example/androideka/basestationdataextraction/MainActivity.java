@@ -23,6 +23,7 @@ import android.view.MenuItem;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
+import android.widget.EditText;
 import android.widget.ListView;
 import android.widget.Toast;
 
@@ -31,8 +32,10 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.UUID;
@@ -46,6 +49,9 @@ public class MainActivity extends AppCompatActivity {
     private HashMap<String, BluetoothDevice> devices = new HashMap<>();
 
     IntentFilter filter = new IntentFilter(BluetoothDevice.ACTION_FOUND);
+
+    private BluetoothSocket baseStation;
+    private BluetoothDevice baseStationDevice;
 
     private final String TAG = "DEBUG";
     IntentFilter pairFilter = new IntentFilter(BluetoothDevice.ACTION_PAIRING_REQUEST);
@@ -63,7 +69,7 @@ public class MainActivity extends AppCompatActivity {
                     byte[] pinBytes;
                     pinBytes = (""+pin).getBytes("UTF-8");
                     device.setPin(pinBytes);
-                    //setPairing confirmation if neeeded
+                    //setPairing confirmation if needed
                     device.setPairingConfirmation(true);
                     pairDevice(device);
                 } catch (Exception e) {
@@ -142,20 +148,20 @@ public class MainActivity extends AppCompatActivity {
                         devices.get(parent.getItemAtPosition(position));
                 if (device.getName() != null && device.getName().equals("Nexus 4")) // Use name of board
                 {
+                    baseStationDevice = device;
                     Log.d(TAG, "Proper station");
-                    try {
+                    //try {
                         bluetooth.cancelDiscovery();
-                        BluetoothSocket socket = device.createInsecureRfcommSocketToServiceRecord(
-                                UUID.fromString("f3c99dbc-e8a5-485a-8e06-e8c56b6df710"));
+                        //BluetoothSocket socket = device.createInsecureRfcommSocketToServiceRecord(
+                        //        UUID.fromString("f3c99dbc-e8a5-485a-8e06-e8c56b6df710"));
                         //Method m = device.getClass().getMethod("createInsecureRfcommSocket", new Class[]{int.class});
                         //BluetoothSocket tmp = (BluetoothSocket) m.invoke(device, 1);
-                        socket.connect();
-                        Log.d(TAG, "Socket connected, reading data.");
-                        readData(socket);
-                    } catch (IOException e) {
-                        Log.d(TAG, "SHIT happened");
-                        e.printStackTrace();
-                    }
+                        //baseStation = socket;
+                        Log.d(TAG, "Socket ready for connection");
+                    //} catch (IOException e) {
+                    //    Log.d(TAG, "SHIT happened");
+                    //    e.printStackTrace();
+                    //}
                 }
             }
         });
@@ -234,9 +240,16 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    public void readData(BluetoothSocket sock)
+    public void readData(View view)
     {
         try {
+            BluetoothSocket sock = baseStationDevice.createInsecureRfcommSocketToServiceRecord(
+                    UUID.fromString("f3c99dbc-e8a5-485a-8e06-e8c56b6df710"));
+            sock.connect();
+            OutputStream request = sock.getOutputStream();
+            byte[] reqBuffer = new byte[5];
+            reqBuffer[0] = 0;
+            request.write(reqBuffer, 0, reqBuffer.length);
             InputStream in = sock.getInputStream();
             byte[] buffer = new byte[65536];
             int num = in.read(buffer);
@@ -253,8 +266,37 @@ public class MainActivity extends AppCompatActivity {
             bufferedOutputStream.write(fileBuffer);
             bufferedOutputStream.flush();
             bufferedOutputStream.close();
+            Toast.makeText(this, num + " bytes received.", Toast.LENGTH_LONG).show();
+            sock.close();
         } catch (IOException e) {
             e.printStackTrace();
+        }
+    }
+
+    public void sendCycle(View view)
+    {
+        EditText editText = (EditText) findViewById(R.id.duty_cycle);
+        if( editText.getText() != null )
+        {
+            // Add number of measurements per day to byte[]
+            float cycle = Float.parseFloat(editText.getText().toString());
+            byte[] reqBuffer = new byte[1];
+            reqBuffer[0] = 1;
+            byte[] float_buf = ByteBuffer.allocate(4).putFloat(cycle).array();
+            byte[] buffer = new byte[reqBuffer.length + float_buf.length];
+            System.arraycopy(reqBuffer, 0, buffer, 0, reqBuffer.length);
+            System.arraycopy(float_buf, 0, buffer, reqBuffer.length, float_buf.length);
+            try {
+                BluetoothSocket sock = baseStationDevice.createInsecureRfcommSocketToServiceRecord(
+                        UUID.fromString("f3c99dbc-e8a5-485a-8e06-e8c56b6df710"));
+                sock.connect();
+                OutputStream outputStream = sock.getOutputStream();
+                outputStream.write(buffer, 0, buffer.length);
+                Toast.makeText(this, "Duty cycle set.", Toast.LENGTH_LONG).show();
+                sock.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
         }
     }
 
