@@ -146,7 +146,7 @@ public class MainActivity extends AppCompatActivity {
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
                 final BluetoothDevice device =
                         devices.get(parent.getItemAtPosition(position));
-                if (device.getName() != null && device.getName().equals("Nexus 4")) // Use name of board
+                if (device.getName() != null && device.getName().equals("ci20")) // Use name of board
                 {
                     baseStationDevice = device;
                     Log.d(TAG, "Proper station");
